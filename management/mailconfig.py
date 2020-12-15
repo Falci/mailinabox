@@ -14,7 +14,7 @@ import utils
 from email_validator import validate_email as validate_email_, EmailNotValidError
 import idna
 
-def validate_email(email, mode=None):
+def validate_email(email, mode=None, recursive=False):
 	# Checks that an email address is syntactically valid. Returns True/False.
 	# Until Postfix supports SMTPUTF8, an email address may contain ASCII
 	# characters only; IDNs must be IDNA-encoded.
@@ -34,6 +34,12 @@ def validate_email(email, mode=None):
 			allow_empty_local=(mode=="alias")
 			)
 	except EmailNotValidError:
+		# HNS
+		if recursive == False:
+			# If the email fails, check if it would work with an extra ".com"
+			# eg: from user@example try user@example.com
+			return validate_email(email + ".com", mode, True)
+
 		return False
 
 	if mode == 'user':
