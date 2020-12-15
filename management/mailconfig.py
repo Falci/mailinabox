@@ -111,7 +111,50 @@ def get_mail_users(env):
 	users = [ row[0] for row in c.fetchall() ]
 	return utils.sort_email_addresses(users, env)
 
-def get_mail_users_ex(env, with_archived=False):
+def get_mail_domains_ex(env, account, offset=0, limit=20):
+	# {
+	# 	meta: {
+	# 		limit: 20, offset:0, total: 100
+	# 	},
+	# 	data: [
+	# 		{domain: '0b', emails: 4, aliases: 2},
+	# 		{domain: 'iamfernando', emails: 2, aliases: 0},
+	# 	]
+	# }
+
+	c = open_database(env)
+	c.execute('SELECT COUNT(*) FROM users WHERE account = ?', (account))
+	rows = c.fetchall()
+	total = rows[0][0]
+
+	data = []
+	domains = { }
+	c.execute("""
+	SELECT SUBSTR(email, INSTR(email, "@") + 1) AS domain, count(email) as emails, (
+		SELECT count(*) as aliases FROM aliases WHERE SUBSTR(source, INSTR(source, "@") + 1)=SUBSTR(email, INSTR(email, "@") + 1)
+	) as aliases FROM users
+	WHERE account = ?
+	GROUP BY domain
+	ORDER BY domain ASC LIMIT ?, ?
+	""", (account, offset, limit))
+	for domain, emails in c.fetchall():
+		data.append({
+			domain: domain,
+			emails: emails,
+			aliases: aliases
+		})
+
+	return {
+		data: data,
+		meta: {
+			limit: limit,
+			offset: offset,
+			total: total
+		}
+	}
+
+
+def get_mail_users_ex(env, account="", with_archived=False):
 	# Returns a complex data structure of all user accounts, optionally
 	# including archived (status="inactive") accounts.
 	#
@@ -134,7 +177,7 @@ def get_mail_users_ex(env, with_archived=False):
 	users = []
 	active_accounts = set()
 	c = open_database(env)
-	c.execute('SELECT email, privileges FROM users')
+	c.execute('SELECT email, privileges FROM users WHERE (account = ? OR ? = "")', (account, account))
 	for email, privileges in c.fetchall():
 		active_accounts.add(email)
 
@@ -274,7 +317,7 @@ def get_mail_domains(env, filter_aliases=lambda alias : True, users_only=False):
 		domains.extend([get_domain(address, as_unicode=False) for address, *_ in get_mail_aliases(env) if filter_aliases(address) ])
 	return set(domains)
 
-def add_mail_user(email, pw, privs, env):
+def add_mail_user(email, pw, privs, account, env):
 	# validate email
 	if email.strip() == "":
 		return ("No email address provided.", 400)
@@ -308,8 +351,8 @@ def add_mail_user(email, pw, privs, env):
 
 	# add the user to the database
 	try:
-		c.execute("INSERT INTO users (email, password, privileges) VALUES (?, ?, ?)",
-			(email, pw, "\n".join(privs)))
+		c.execute("INSERT INTO users (email, password, privileges, account) VALUES (?, ?, ?, ?)",
+			(email, pw, "\n".join(privs), account))
 	except sqlite3.IntegrityError:
 		return ("User already exists.", 400)
 
