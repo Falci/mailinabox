@@ -123,7 +123,7 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	# }
 
 	c = open_database(env)
-	c.execute('SELECT COUNT(*) FROM users WHERE account = ?', (account,))
+	c.execute('SELECT COUNT(DISTINCT(SUBSTR(email, INSTR(email, "@") + 1))) FROM users WHERE account = ?', (account,))
 	rows = c.fetchall()
 	total = rows[0][0]
 

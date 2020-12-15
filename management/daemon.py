@@ -241,7 +241,7 @@ def mail_aliases_remove():
 @authorized_personnel_only
 def mail_domains():
 	if request.args.get("format", "") == "json":
-		return json_response(get_mail_domains_ex(env, request.args.get("account", ""), request.args.get("offset", "0"), request.args.get("limit", "20")))
+		return json_response(get_mail_domains_ex(env, request.args.get("account", ""), request.args.get("offset", 0), request.args.get("limit", 20)))
 	else:
     	return "".join(x+"\n" for x in get_mail_domains(env))
 
