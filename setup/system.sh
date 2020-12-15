@@ -336,7 +336,9 @@ fi
 # download bind9 from.
 rm -f /etc/resolv.conf
 tools/editconf.py /etc/systemd/resolved.conf DNSStubListener=no
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
+# HSD server
+echo "nameserver 64.227.15.172" > /etc/resolv.conf
+echo "nameserver 127.0.0.1" >> /etc/resolv.conf
 
 # Restart the DNS services.
 
