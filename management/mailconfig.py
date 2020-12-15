@@ -123,7 +123,7 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	# }
 
 	c = open_database(env)
-	c.execute('SELECT COUNT(*) FROM users WHERE account = ?', (account))
+	c.execute('SELECT COUNT(*) FROM users WHERE account = ?', (account,))
 	rows = c.fetchall()
 	total = rows[0][0]
 
@@ -137,19 +137,20 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	GROUP BY domain
 	ORDER BY domain ASC LIMIT ?, ?
 	""", (account, offset, limit))
-	for domain, emails in c.fetchall():
+
+	for domain, emails, aliases in c.fetchall():
 		data.append({
-			domain: domain,
-			emails: emails,
-			aliases: aliases
+			"domain": domain,
+			"emails": emails,
+			"aliases": aliases
 		})
 
 	return {
-		data: data,
-		meta: {
-			limit: limit,
-			offset: offset,
-			total: total
+		"data": data,
+		"meta": {
+			"limit": limit,
+			"offset": offset,
+			"total": total
 		}
 	}
 
