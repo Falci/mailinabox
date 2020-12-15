@@ -1,6 +1,8 @@
 #!/bin/bash
 # This script is run daily (at 3am each night).
 
+source /etc/mailinabox.conf
+
 # Set character encoding flags to ensure that any non-ASCII
 # characters don't cause problems. See setup/start.sh and
 # the management daemon startup script.
@@ -19,7 +21,8 @@ fi
 management/backup.py 2>&1 | management/email_administrator.py "Backup Status"
 
 # Provision any new certificates for new domains or domains with expiring certificates.
-management/ssl_certificates.py -q  2>&1 | management/email_administrator.py "TLS Certificate Provisioning Result"
+# HNS: certbot should only care about "box.sinpapeles.xyz"
+management/ssl_certificates.py -q $PRIMARY_HOSTNAME 2>&1 | management/email_administrator.py "TLS Certificate Provisioning Result"
 
 # Run status checks and email the administrator if anything changed.
 management/status_checks.py --show-changes  2>&1 | management/email_administrator.py "Status Checks Change Notice"
