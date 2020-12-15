@@ -23,7 +23,8 @@ def get_dns_domains(env):
 	# Add all domain names in use by email users and mail aliases and ensure
 	# PRIMARY_HOSTNAME is in the list.
 	domains = set()
-	domains |= get_mail_domains(env)
+	# Sinpapeles: the only domain we care about DNS validation is the box.sinpapeles.xyz
+	#domains |= get_mail_domains(env)
 	domains.add(env['PRIMARY_HOSTNAME'])
 	return domains
 
