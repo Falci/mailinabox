@@ -191,6 +191,11 @@ def migration_14(env):
 	db = os.path.join(env["STORAGE_ROOT"], 'mail/users.sqlite')
 	shell("check_call", ["sqlite3", db, "ALTER TABLE users ADD account TEXT NOT NULL DEFAULT ''"])
 
+def migration_15(env):
+	# Add a new column to the mail users table where we can store if it is active.
+	db = os.path.join(env["STORAGE_ROOT"], 'mail/users.sqlite')
+	shell("check_call", ["sqlite3", db, "ALTER TABLE users ADD status INTEGER NOT NULL DEFAULT 1"])
+
 ###########################################################
 
 def get_current_migration():
