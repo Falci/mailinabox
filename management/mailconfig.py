@@ -128,7 +128,6 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	total = rows[0][0]
 
 	data = []
-	domains = { }
 	c.execute("""
 	SELECT SUBSTR(email, INSTR(email, "@") + 1) AS domain, count(email) as emails, (
 		SELECT count(*) as aliases FROM aliases WHERE SUBSTR(source, INSTR(source, "@") + 1)=SUBSTR(email, INSTR(email, "@") + 1)
@@ -154,6 +153,48 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 		}
 	}
 
+
+def get_mail_users_by_name(env, domain="", offset=0, limit=20):
+	# {
+	# 	meta: {
+	# 		limit: 20, offset:0, total: 100
+	# 	},
+	# 	data: [
+	# 		{email: 'mail@0b', privileges: [], status: 1},
+	# 		{email: 'support@0b', privileges: [], status: 0},
+	# 	]
+	# }
+
+	# Get users and their privileges.
+	users = []
+	c = open_database(env)
+	c.execute('SELECT COUNT(*) FROM users WHERE SUBSTR(email, INSTR(email, "@") + 1) = ?', (domain,))
+	rows = c.fetchall()
+	total = rows[0][0]
+
+	data = []
+	c.execute("""
+	SELECT email, privileges, status
+	FROM users
+	WHERE SUBSTR(email, INSTR(email, "@") + 1) = ?
+	ORDER BY email ASC LIMIT ?, ?
+	""", (domain, offset, limit))
+
+	for email, privileges, status in c.fetchall():
+		data.append({
+			"email": email,
+			"privileges": parse_privs(privileges),
+			"status": status,
+		})
+
+	return {
+		"data": data,
+		"meta": {
+			"limit": limit,
+			"offset": offset,
+			"total": total
+		}
+	}
 
 def get_mail_users_ex(env, account="", with_archived=False):
 	# Returns a complex data structure of all user accounts, optionally

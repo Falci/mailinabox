@@ -15,7 +15,7 @@ from functools import wraps
 from flask import Flask, request, render_template, abort, Response, send_from_directory, make_response
 
 import auth, utils
-from mailconfig import get_mail_users, get_mail_users_ex, get_admins, add_mail_user, set_mail_password, remove_mail_user
+from mailconfig import get_mail_users, get_mail_users_ex, get_mail_users_by_name, get_admins, add_mail_user, set_mail_password, remove_mail_user
 from mailconfig import get_mail_user_privileges, add_remove_mail_user_privilege
 from mailconfig import get_mail_aliases, get_mail_aliases_ex, get_mail_domains, get_mail_domains_ex, add_mail_alias, remove_mail_alias
 from mfa import get_public_mfa_state, provision_totp, validate_totp_secret, enable_mfa, disable_mfa
@@ -169,7 +169,11 @@ def me():
 @authorized_personnel_only
 def mail_users():
 	if request.args.get("format", "") == "json":
-		return json_response(get_mail_users_ex(env, account=request.args.get("account", ""), with_archived=True))
+		domain=request.args.get("domain", "")
+		if domain !== "":
+			return json_response(get_mail_users_by_name(env, domain, int(request.args.get("offset", '0')), int(request.args.get("limit", '20'))))
+		else:
+			return json_response(get_mail_users_ex(env, account=request.args.get("account", ""), with_archived=True))
 	else:
 		return "".join(x+"\n" for x in get_mail_users(env))
 
@@ -241,7 +245,7 @@ def mail_aliases_remove():
 @authorized_personnel_only
 def mail_domains():
 	if request.args.get("format", "") == "json":
-		return json_response(get_mail_domains_ex(env, request.args.get("account", ""), request.args.get("offset", 0), request.args.get("limit", 20)))
+		return json_response(get_mail_domains_ex(env, request.args.get("account", ""), int(request.args.get("offset", '0')), int(request.args.get("limit", '20'))))
 	else:
     	return "".join(x+"\n" for x in get_mail_domains(env))
 
