@@ -107,7 +107,7 @@ def open_database(env, with_connection=False):
 def get_mail_users(env):
 	# Returns a flat, sorted list of all user accounts.
 	c = open_database(env)
-	c.execute('SELECT email FROM users')
+	c.execute('SELECT email FROM users WHERE status=1')
 	users = [ row[0] for row in c.fetchall() ]
 	return utils.sort_email_addresses(users, env)
 
@@ -123,7 +123,7 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	# }
 
 	c = open_database(env)
-	c.execute('SELECT COUNT(DISTINCT(SUBSTR(email, INSTR(email, "@") + 1))) FROM users WHERE account = ?', (account,))
+	c.execute('SELECT COUNT(DISTINCT(SUBSTR(email, INSTR(email, "@") + 1))) FROM users WHERE account = ? AND status=1', (account,))
 	rows = c.fetchall()
 	total = rows[0][0]
 
@@ -132,7 +132,7 @@ def get_mail_domains_ex(env, account, offset=0, limit=20):
 	SELECT SUBSTR(email, INSTR(email, "@") + 1) AS domain, count(email) as emails, (
 		SELECT count(*) as aliases FROM aliases WHERE SUBSTR(source, INSTR(source, "@") + 1)=SUBSTR(email, INSTR(email, "@") + 1)
 	) as aliases FROM users
-	WHERE account = ?
+	WHERE account = ? AND status=1
 	GROUP BY domain
 	ORDER BY domain ASC LIMIT ?, ?
 	""", (account, offset, limit))
@@ -168,7 +168,7 @@ def get_mail_users_by_name(env, domain="", offset=0, limit=20):
 	# Get users and their privileges.
 	users = []
 	c = open_database(env)
-	c.execute('SELECT COUNT(*) FROM users WHERE SUBSTR(email, INSTR(email, "@") + 1) = ?', (domain,))
+	c.execute('SELECT COUNT(*) FROM users WHERE SUBSTR(email, INSTR(email, "@") + 1) = ? AND status=1', (domain,))
 	rows = c.fetchall()
 	total = rows[0][0]
 
@@ -176,7 +176,9 @@ def get_mail_users_by_name(env, domain="", offset=0, limit=20):
 	c.execute("""
 	SELECT email, privileges, status
 	FROM users
-	WHERE SUBSTR(email, INSTR(email, "@") + 1) = ?
+	WHERE
+		SUBSTR(email, INSTR(email, "@") + 1) = ?
+		AND status=1
 	ORDER BY email ASC LIMIT ?, ?
 	""", (domain, offset, limit))
 
@@ -219,7 +221,7 @@ def get_mail_users_ex(env, account="", with_archived=False):
 	users = []
 	active_accounts = set()
 	c = open_database(env)
-	c.execute('SELECT email, privileges FROM users WHERE (account = ? OR ? = "")', (account, account))
+	c.execute('SELECT email, privileges FROM users WHERE (account = ? OR ? = "") AND status=1', (account, account))
 	for email, privileges in c.fetchall():
 		active_accounts.add(email)
 
@@ -431,7 +433,7 @@ def get_mail_password(email, env):
 	# http://wiki2.dovecot.org/Authentication/PasswordSchemes
 	# update the database
 	c = open_database(env)
-	c.execute('SELECT password FROM users WHERE email=?', (email,))
+	c.execute('SELECT password FROM users WHERE email=? AND status=1', (email,))
 	rows = c.fetchall()
 	if len(rows) != 1:
 		raise ValueError("That's not a user (%s)." % email)
@@ -440,7 +442,7 @@ def get_mail_password(email, env):
 def remove_mail_user(email, env):
 	# remove
 	conn, c = open_database(env, with_connection=True)
-	c.execute("DELETE FROM users WHERE email=?", (email,))
+	c.execute("UPDATE users SET status=0 WHERE email=?", (email,))
 	if c.rowcount != 1:
 		return ("That's not a user (%s)." % email, 400)
 	conn.commit()
@@ -454,7 +456,7 @@ def parse_privs(value):
 def get_mail_user_privileges(email, env, empty_on_error=False):
 	# get privs
 	c = open_database(env)
-	c.execute('SELECT privileges FROM users WHERE email=?', (email,))
+	c.execute('SELECT privileges FROM users WHERE email=? AND status=1', (email,))
 	rows = c.fetchall()
 	if len(rows) != 1:
 		if empty_on_error: return []

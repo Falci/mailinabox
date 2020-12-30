@@ -8,7 +8,7 @@ import qrcode
 from mailconfig import open_database
 
 def get_user_id(email, c):
-	c.execute('SELECT id FROM users WHERE email=?', (email,))
+	c.execute('SELECT id FROM users WHERE email=? AND status=1', (email,))
 	r = c.fetchone()
 	if not r: raise ValueError("User does not exist.")
 	return r[0]

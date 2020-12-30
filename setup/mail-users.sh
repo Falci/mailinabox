@@ -49,9 +49,9 @@ cat > /etc/dovecot/dovecot-sql.conf.ext << EOF;
 driver = sqlite
 connect = $db_path
 default_pass_scheme = SHA512-CRYPT
-password_query = SELECT email as user, password FROM users WHERE email='%u';
-user_query = SELECT email AS user, "mail" as uid, "mail" as gid, "$STORAGE_ROOT/mail/mailboxes/%d/%n" as home FROM users WHERE email='%u';
-iterate_query = SELECT email AS user FROM users;
+password_query = SELECT email as user, password FROM users WHERE email='%u' AND status=1;
+user_query = SELECT email AS user, "mail" as uid, "mail" as gid, "$STORAGE_ROOT/mail/mailboxes/%d/%n" as home FROM users WHERE email='%u' AND status=1;
+iterate_query = SELECT email AS user FROM users WHERE status=1;
 EOF
 chmod 0600 /etc/dovecot/dovecot-sql.conf.ext # per Dovecot instructions
 
@@ -94,7 +94,7 @@ tools/editconf.py /etc/postfix/main.cf \
 # take the value from the destination column.
 cat > /etc/postfix/sender-login-maps.cf << EOF;
 dbpath=$db_path
-query = SELECT permitted_senders FROM (SELECT permitted_senders, 0 AS priority FROM aliases WHERE source='%s' AND permitted_senders IS NOT NULL UNION SELECT destination AS permitted_senders, 1 AS priority FROM aliases WHERE source='%s' AND permitted_senders IS NULL UNION SELECT email as permitted_senders, 2 AS priority FROM users WHERE email='%s') ORDER BY priority LIMIT 1;
+query = SELECT permitted_senders FROM (SELECT permitted_senders, 0 AS priority FROM aliases WHERE source='%s' AND permitted_senders IS NOT NULL UNION SELECT destination AS permitted_senders, 1 AS priority FROM aliases WHERE source='%s' AND permitted_senders IS NULL UNION SELECT email as permitted_senders, 2 AS priority FROM users WHERE email='%s' AND status=1) ORDER BY priority LIMIT 1;
 EOF
 
 # ### Destination Validation
@@ -110,13 +110,13 @@ tools/editconf.py /etc/postfix/main.cf \
 # SQL statement to check if we handle incoming mail for a domain, either for users or aliases.
 cat > /etc/postfix/virtual-mailbox-domains.cf << EOF;
 dbpath=$db_path
-query = SELECT 1 FROM users WHERE email LIKE '%%@%s' UNION SELECT 1 FROM aliases WHERE source LIKE '%%@%s'
+query = SELECT 1 FROM users WHERE (email LIKE '%%@%s' AND status=1) UNION SELECT 1 FROM aliases WHERE source LIKE '%%@%s'
 EOF
 
 # SQL statement to check if we handle incoming mail for a user.
 cat > /etc/postfix/virtual-mailbox-maps.cf << EOF;
 dbpath=$db_path
-query = SELECT 1 FROM users WHERE email='%s'
+query = SELECT 1 FROM users WHERE email='%s' AND status=1
 EOF
 
 # SQL statement to rewrite an email address if an alias is present.
@@ -145,7 +145,7 @@ EOF
 # empty destination here so that other lower priority rules might match.
 cat > /etc/postfix/virtual-alias-maps.cf << EOF;
 dbpath=$db_path
-query = SELECT destination from (SELECT destination, 0 as priority FROM aliases WHERE source='%s' AND destination<>'' UNION SELECT email as destination, 1 as priority FROM users WHERE email='%s') ORDER BY priority LIMIT 1;
+query = SELECT destination from (SELECT destination, 0 as priority FROM aliases WHERE source='%s' AND destination<>'' UNION SELECT email as destination, 1 as priority FROM users WHERE email='%s' AND status=1) ORDER BY priority LIMIT 1;
 EOF
 
 # Restart Services
